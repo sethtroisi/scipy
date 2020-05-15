@@ -266,7 +266,8 @@ c
 c  ..
 c  ..scalar arguments..
       real*8 xb,xe,yb,ye,s,fp
-      integer iopt,mx,my,kx,ky,nxest,nyest,nx,ny,lwrk,kwrk,ier
+      integer iopt,kx,ky,nx,ny,ier
+      integer*8 mx,my,nxest,nyest,lwrk,kwrk
 c  ..array arguments..
       real*8 x(mx),y(my),z(mx*my),tx(nxest),ty(nyest),
      * c((nxest-kx-1)*(nyest-ky-1)),wrk(lwrk)

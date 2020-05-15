@@ -611,9 +611,9 @@ static int calc_regrid_lwrk(int mx, int my, int kx, int ky,
        threadsafe
 
        integer intent(hide) :: iopt=0
-       integer intent(hide),depend(x,kx),check(mx>kx) :: mx=len(x)
+       integer*8 intent(hide),depend(x,kx),check(mx>kx) :: mx=len(x)
        real*8 dimension(mx) :: x
-       integer intent(hide),depend(y,ky),check(my>ky) :: my=len(y)
+       integer*8 intent(hide),depend(y,ky),check(my>ky) :: my=len(y)
        real*8 dimension(my) :: y
        real*8 dimension(mx*my),depend(mx,my),check(len(z)==mx*my) :: z
        real*8 optional,depend(x,mx) :: xb=dmin(x,mx)
@@ -623,9 +623,9 @@ static int calc_regrid_lwrk(int mx, int my, int kx, int ky,
        integer optional,check(1<=kx && kx<=5) :: kx = 3
        integer optional,check(1<=ky && ky<=5) :: ky = 3
        real*8 optional,check(0.0<=s) :: s = 0.0
-       integer intent(hide),depend(kx,mx),check(nxest>=2*(kx+1)) &
+       integer*8 intent(hide),depend(kx,mx),check(nxest>=2*(kx+1)) &
             :: nxest = mx+kx+1
-       integer intent(hide),depend(ky,my),check(nyest>=2*(ky+1)) &
+       integer*8 intent(hide),depend(ky,my),check(nyest>=2*(ky+1)) &
             :: nyest = my+ky+1
        integer intent(out) :: nx
        real*8 dimension(nxest),intent(out),depend(nxest) :: tx
@@ -635,14 +635,14 @@ static int calc_regrid_lwrk(int mx, int my, int kx, int ky,
             depend(kx,ky,nxest,nyest),intent(out) :: c
        real*8 intent(out) :: fp
        real*8 dimension(lwrk),intent(cache,hide),depend(lwrk) :: wrk
-       integer intent(hide),depend(mx,my,kx,ky,nxest,nyest) &
+       integer*8 intent(hide),depend(mx,my,kx,ky,nxest,nyest) &
             :: lwrk=calc_regrid_lwrk(mx,my,kx,ky,nxest,nyest)
-       integer dimension(kwrk),depend(kwrk),intent(cache,hide) :: iwrk
+       integer*8 dimension(kwrk),depend(kwrk),intent(cache,hide) :: iwrk
        integer intent(hide),depend(mx,my,nxest,nyest) &
             :: kwrk=3+mx+my+nxest+nyest
        integer intent(out) :: ier
      end subroutine regrid_smth
- 
+
      subroutine regrid_smth_spher(iopt,ider,mu,u,mv,v,r,r0,r1,s,nuest,nvest,&
         nu,tu,nv,tv,c,fp,wrk,lwrk,iwrk,kwrk,ier)
        !  nu,tu,nv,tv,c,fp,ier = regrid_smth_spher(u,v,r,[r0,r1,s])
