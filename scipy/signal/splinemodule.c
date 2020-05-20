@@ -2,6 +2,7 @@
 #include "numpy/arrayobject.h"
 #include <math.h>
 
+#include <stdio.h>
 
 #define PYERR(message) do {PyErr_SetString(PyExc_ValueError, message); goto fail;} while(0)
 
@@ -97,13 +98,15 @@ static PyObject *cspline2d(PyObject *NPY_UNUSED(dummy), PyObject *args)
   outstrides[1] = 1;
 
   if (thetype == NPY_FLOAT) {
+    printf("NPY_FLOAT\n");
     if ((precision <= 0.0) || (precision > 1.0)) precision = 1e-3;
     retval = S_cubic_spline2D((float *)PyArray_DATA(a_image),
                               (float *)PyArray_DATA(ck),
                               M, N, lambda, instrides, outstrides, precision);
   }
   else if (thetype == NPY_DOUBLE) {
-    if ((precision <= 0.0) || (precision > 1.0)) precision = 1e-6;
+    printf("NPY_DOUBLE\n");
+    if ((precision <= 0.0) || (precision > 1.0)) precision = 1e-3;
     retval = D_cubic_spline2D((double *)PyArray_DATA(a_image),
                               (double *)PyArray_DATA(ck),
                               M, N, lambda, instrides, outstrides, precision);

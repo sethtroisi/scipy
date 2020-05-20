@@ -23,9 +23,9 @@ def spline_filter(Iin, lmbda=5.0):
     fall-off `lmbda`.
     """
     intype = Iin.dtype.char
-    hcol = array([1.0, 4.0, 1.0], 'f') / 6.0
+    hcoltype = 'd' if intype in ('d', 'D') else 'f'
+    hcol = array([1.0, 4.0, 1.0], hcoltype) / 6
     if intype in ['F', 'D']:
-        Iin = Iin.astype('F')
         ckr = cspline2d(Iin.real, lmbda)
         cki = cspline2d(Iin.imag, lmbda)
         outr = sepfir2d(ckr, hcol, hcol)
