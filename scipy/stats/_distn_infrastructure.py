@@ -13,7 +13,6 @@ import inspect
 from itertools import zip_longest
 
 from scipy._lib import doccer
-from scipy._lib._util import _lazywhere
 from ._distr_params import distcont, distdiscrete
 from scipy._lib._util import check_random_state
 from scipy._lib._util import _valarray as valarray
@@ -555,8 +554,14 @@ def _parse_args_stats(self, %(shape_arg_str)s %(locscale_in)s, moments='mv'):
 # The function name ncx2 is an abbreviation for noncentral chi squared.
 
 def _ncx2_log_pdf(x, df, nc):
-    pdf = _ncx2_pdf(x, df, nc)
-    return _lazywhere(pdf > 0, (pdf,), f=np.log, fillvalue=-np.inf)
+     # We use (xs**2 + ns**2)/2 = (xs - ns)**2/2  + xs*ns, and include the
+     # factor of exp(-xs*ns) into the ive function to improve numerical
+     # stability at large values of xs. See also `rice.pdf`.
+     df2 = df/2.0 - 1.0
+     xs, ns = np.sqrt(x), np.sqrt(nc)
+     res = xlogy(df2/2.0, x/nc) - 0.5*(xs - ns)**2
+     res += np.log(ive(df2, xs*ns) / 2.0)
+     return res
 
 
 def _ncx2_pdf(x, df, nc):

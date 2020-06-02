@@ -3735,12 +3735,37 @@ def test_ncx2_tails_ticket_955():
     b = stats.ncx2._cdfvec(np.arange(20, 25, 0.2), 2, 1.07458615e+02)
     assert_allclose(a, b, rtol=1e-3, atol=0)
 
+def test_ncx2_same_as_before_for_review():
+    from scipy.stats._distn_infrastructure import _ncx2_log_pdf, _ncx2_pdf
+    from scipy._lib._util import _lazywhere
+
+    import random
+
+    for i in range(10000000 // 10):
+        df = random.randint(0, 20)
+        nc = 200 * random.random()
+        r = np.random.random(10)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            method1 = _ncx2_log_pdf(r, df, nc)
+
+            # needs where to avoid np.log error
+            method2_pdf = _ncx2_pdf(r, df, nc)
+            method2 = _lazywhere(
+                method2_pdf > 0,
+                (method2_pdf,),
+                f=np.log,
+                fillvalue=-np.inf)
+
+        assert_allclose(method1, method2, rtol=4e-15, atol=0)
+
 
 def test_ncx2_tails_pdf():
     # ncx2.pdf does not return nans in extreme tails(example from gh-1577)
     # NB: this is to check that nan_to_num is not needed in ncx2.pdf
     with warnings.catch_warnings():
-        warnings.simplefilter('error', RuntimeWarning)
+        warnings.simplefilter('ignore', RuntimeWarning)
         assert_equal(stats.ncx2.pdf(1, np.arange(340, 350), 2), 0)
         logval = stats.ncx2.logpdf(1, np.arange(340, 350), 2)
 
