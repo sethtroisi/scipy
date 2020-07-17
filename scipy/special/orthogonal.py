@@ -87,6 +87,9 @@ from . import _ufuncs as cephes
 _gam = cephes.gamma
 from . import specfun
 
+_LOG_2 = np.log(2)
+_LOG_SQRT_PI = np.log(np.pi) / 2.0
+
 _polyfuns = ['legendre', 'chebyt', 'chebyu', 'chebyc', 'chebys',
              'jacobi', 'laguerre', 'genlaguerre', 'hermite',
              'hermitenorm', 'gegenbauer', 'sh_legendre', 'sh_chebyt',
@@ -163,7 +166,7 @@ class orthopoly1d(np.poly1d):
         self.normcoef *= p
 
 
-def _gen_roots_and_weights(n, mu0, an_func, bn_func, f, df, symmetrize, mu):
+def _gen_roots_and_weights(n, log_mu0, an_func, bn_func, f, df, symmetrize, mu):
     """[x,w] = gen_roots_and_weights(n,an_func,sqrt_bn_func,mu)
 
     Returns the roots (x) of an nth order orthogonal polynomial,
@@ -198,10 +201,19 @@ def _gen_roots_and_weights(n, mu0, an_func, bn_func, f, df, symmetrize, mu):
         w = (w + w[::-1]) / 2
         x = (x - x[::-1]) / 2
 
-    w *= mu0 / w.sum()
+    # log_mu might be quite large
+    try:
+        log_w = np.log(w) + log_mu0 - np.log(w.sum())
+        w = np.exp(log_w) - log_add
+    except:
+        print ("Bad w:", w, w.sum())
+        w *= np.exp(log_mu0) / w.sum()
+        print ("Would be:", w)
+
 
     if mu:
-        return x, w, mu0
+        # If log_mu0 is quite large this will Overflow
+        return x, w, np.exp(log_mu0)
     else:
         return x, w
 
@@ -262,7 +274,7 @@ def roots_jacobi(n, alpha, beta, mu=False):
     if alpha == beta:
         return roots_gegenbauer(m, alpha+0.5, mu)
 
-    mu0 = 2.0**(alpha+beta+1)*cephes.beta(alpha+1, beta+1)
+    log_mu0 = _LOG_2 * (alpha+beta+1) + cephes.betaln(alpha+1, beta+1)
     a = alpha
     b = beta
     if a + b == 0.0:
@@ -277,7 +289,7 @@ def roots_jacobi(n, alpha, beta, mu=False):
     f = lambda n, x: cephes.eval_jacobi(n, a, b, x)
     df = lambda n, x: 0.5 * (n + a + b + 1) \
                       * cephes.eval_jacobi(n-1, a+1, b+1, x)
-    return _gen_roots_and_weights(m, mu0, an_func, bn_func, f, df, False, mu)
+    return _gen_roots_and_weights(m, log_mu0, an_func, bn_func, f, df, False, mu)
 
 
 def jacobi(n, alpha, beta, monic=False):
@@ -496,9 +508,10 @@ def roots_genlaguerre(n, alpha, mu=False):
     if alpha < -1:
         raise ValueError("alpha must be greater than -1.")
 
-    mu0 = cephes.gamma(alpha + 1)
+    log_mu0 = cephes.gammaln(alpha + 1)
 
     if m == 1:
+        mu0 = np.exp(log_mu0)
         x = np.array([alpha+1.0], 'd')
         w = np.array([mu0], 'd')
         if mu:
@@ -511,7 +524,7 @@ def roots_genlaguerre(n, alpha, mu=False):
     f = lambda n, x: cephes.eval_genlaguerre(n, alpha, x)
     df = lambda n, x: (n*cephes.eval_genlaguerre(n, alpha, x)
                      - (n + alpha)*cephes.eval_genlaguerre(n-1, alpha, x))/x
-    return _gen_roots_and_weights(m, mu0, an_func, bn_func, f, df, False, mu)
+    return _gen_roots_and_weights(m, log_mu0, an_func, bn_func, f, df, False, mu)
 
 
 def genlaguerre(n, alpha, monic=False):
@@ -737,11 +750,12 @@ def roots_hermite(n, mu=False):
 
     mu0 = np.sqrt(np.pi)
     if n <= 150:
+        log_mu0 = np.log(mu0)
         an_func = lambda k: 0.0*k
         bn_func = lambda k: np.sqrt(k/2.0)
         f = cephes.eval_hermite
         df = lambda n, x: 2.0 * n * cephes.eval_hermite(n-1, x)
-        return _gen_roots_and_weights(m, mu0, an_func, bn_func, f, df, True, mu)
+        return _gen_roots_and_weights(m, log_mu0, an_func, bn_func, f, df, True, mu)
     else:
         nodes, weights = _roots_hermite_asy(m)
         if mu:
@@ -1222,11 +1236,12 @@ def roots_hermitenorm(n, mu=False):
 
     mu0 = np.sqrt(2.0*np.pi)
     if n <= 150:
+        log_mu0 = np.log(mu0)
         an_func = lambda k: 0.0*k
         bn_func = lambda k: np.sqrt(k)
         f = cephes.eval_hermitenorm
         df = lambda n, x: n * cephes.eval_hermitenorm(n-1, x)
-        return _gen_roots_and_weights(m, mu0, an_func, bn_func, f, df, True, mu)
+        return _gen_roots_and_weights(m, log_mu0, an_func, bn_func, f, df, True, mu)
     else:
         nodes, weights = _roots_hermite_asy(m)
         # Transform
@@ -1344,14 +1359,14 @@ def roots_gegenbauer(n, alpha, mu=False):
         # keep doing so.
         return roots_chebyt(n, mu)
 
-    mu0 = np.sqrt(np.pi) * cephes.gamma(alpha + 0.5) / cephes.gamma(alpha + 1)
+    log_mu0 = _LOG_SQRT_PI + cephes.gammaln(alpha + 0.5) - cephes.gammaln(alpha + 1)
     an_func = lambda k: 0.0 * k
     bn_func = lambda k: np.sqrt(k * (k + 2 * alpha - 1)
                         / (4 * (k + alpha) * (k + alpha - 1)))
     f = lambda n, x: cephes.eval_gegenbauer(n, alpha, x)
     df = lambda n, x: (-n*x*cephes.eval_gegenbauer(n, alpha, x)
          + (n + 2*alpha - 1)*cephes.eval_gegenbauer(n-1, alpha, x))/(1-x**2)
-    return _gen_roots_and_weights(m, mu0, an_func, bn_func, f, df, True, mu)
+    return _gen_roots_and_weights(m, log_mu0, an_func, bn_func, f, df, True, mu)
 
 
 def gegenbauer(n, alpha, monic=False):
@@ -2020,13 +2035,13 @@ def roots_legendre(n, mu=False):
     if n < 1 or n != m:
         raise ValueError("n must be a positive integer.")
 
-    mu0 = 2.0
+    log_mu0 = _LOG_2
     an_func = lambda k: 0.0 * k
     bn_func = lambda k: k * np.sqrt(1.0 / (4 * k * k - 1))
     f = cephes.eval_legendre
     df = lambda n, x: (-n*x*cephes.eval_legendre(n, x)
                      + n*cephes.eval_legendre(n-1, x))/(1-x**2)
-    return _gen_roots_and_weights(m, mu0, an_func, bn_func, f, df, True, mu)
+    return _gen_roots_and_weights(m, log_mu0, an_func, bn_func, f, df, True, mu)
 
 
 def legendre(n, monic=False):
